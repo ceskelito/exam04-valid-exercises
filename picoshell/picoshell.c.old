@@ -1,0 +1,84 @@
+/**
+ * int    picoshell(char **cmds[]);
+ * 
+ * The goal of this function is to execute a pipeline. It must execute each
+ * commands of cmds and connect the output of one to the input of the
+ * next command (just like a shell).
+ * e
+ * Cmds contains a null-terminated list of valid commands. Each rows
+ * of cmds are an argv array directly usable for a call to execvp. The first
+ * arguments of each command is the command name or path and can be passed
+ * directly as the first argument of execvp.
+ * 
+ * If any error occur, The function must return 1 (you must of course
+ * close all the open fds before). otherwise the function must wait all child
+ * processes and return 0. You will find in this directory a file main.c which
+ * contain something to help you test your function.
+ * 
+ * 
+ * Examples:
+ * ./picoshell /bin/ls "|" /usr/bin/grep picoshell
+ * picoshell
+ * ./picoshell echo 'squalala' "|" cat "|" sed 's/a/b/g'
+ * squblblb
+ */
+
+// Allowed functions: close, fork, wait, exit, execvp, dup2, pipe
+
+#include <unistd.h>
+#include <stddef.h>
+#include <stdlib.h>
+#include <sys/wait.h>
+
+int	picoshell(char **cmds[]) {
+	
+	enum { E_SUCC = 0, E_FAIL = 1 };
+	enum { READ = 0, WRITE = 1 };
+
+	if ( !cmds )
+		return E_FAIL;
+
+	int	pipefd[2];
+	int prevfd[2] = {STDIN_FILENO, STDOUT_FILENO};
+	int dup_failure;
+	int pid;
+
+	for ( int i = 0; cmds[i]; i++ ) {
+
+		if (pipe(pipefd) == -1)
+			return E_FAIL;
+		pid = fork();
+		if ( pid == -1 ) {
+			close(pipefd[READ]);
+			close(pipefd[WRITE]);
+			return E_FAIL;
+		}
+
+		if ( pid == 0 ) { // CHILD
+			if ( i > 0 )
+				dup_failure = dup2(prevfd[READ], pipefd[READ]) == -1;
+			if ( cmds[i + 1] )
+				dup_failure = dup2(prevfd[WRITE], pipefd[WRITE]) == -1 || dup_failure;
+			close(pipefd[READ]);
+			close(pipefd[WRITE]);
+			close(prevfd[READ]);
+			close(prevfd[WRITE]);
+			if ( dup_failure )
+				exit(EXIT_FAILURE);
+			execvp(cmds[i][0], cmds[i]);
+			exit(EXIT_FAILURE);
+		}
+
+		// PARENT
+		wait(&pid);
+		if (prevfd[READ] != STDIN_FILENO)
+			close(prevfd[READ]);
+		if (prevfd[WRITE] != STDOUT_FILENO)
+			close(prevfd[WRITE]);
+		prevfd[READ] = pipefd[READ];
+		prevfd[WRITE] = pipefd[WRITE];
+	}
+	close(pipefd[READ]);
+	close(pipefd[WRITE]);
+	return E_SUCC;
+}
