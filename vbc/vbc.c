@@ -147,39 +147,51 @@ int get_prior( char c ) {
 
 node *n(char **s) {
 
+	// The variables names in this function have to be improved.
+
+	enum { PAR_WEIGHT = 10 };
+
 	if ( !s || !*s )
 		return NULL;
 
-	struct s_min_prior { int value; char *ptr; int type; } min_prior;
+	struct s_min_prior {
+		int type; // Net weight of the element -> aka the node's type in the tree.
+		int value; // Composed weight (priority) of the element. It means: net weight + parenthesis depth * parenthesis weight.
+		char *ptr; // Pointer to the less prioritized element in the string.
+	} min_prior;
 	min_prior.value = INT_MAX;
 	min_prior.type = VAL;
 	min_prior.ptr = 0;
 	
 	node new;
 
-	int p = 0;
-	int pp = 0;
+	int p = 0; // Current element's net weight
+	int pp = 0; // Parenthesis depth
 
 	// Find the less prioritized node (including parenthesis)
 	for ( int i = 0; (*s)[i]; i++ ) {
 
 		if ( (*s)[i] == '(' ){
-			pp += 10;
+			pp++;
 			continue;
 		}
 		else if ( (*s)[i] == ')' ) {
-			pp -= 10;
+			pp--;
 			continue;
 		}
 
+		// `p' contains the net weight of the curr element.
+		// `p' contains -1 in case of unexpected element.
 		p = get_prior((*s)[i]);
 
-		if ( p != -1 && (p + pp) < min_prior.value ) {
-			min_prior.value = (p + pp);
+		// To obtain the real priority of the element simply sum the Net Weight with the Parenthesis Full Weight: `p' + `pp' * `PAR_WEIGHT'.
+		if ( p != -1 && (p + pp * PAR_WEIGHT) < min_prior.value ) {
+			min_prior.value = (p + pp * PAR_WEIGHT);
 			min_prior.type = p;
 			min_prior.ptr = (*s) + i;
 		}
 	}
+
 	new.type = min_prior.type;
 	if ( new.type == VAL ) {
 		new.val = min_prior.ptr[0] - '0';
