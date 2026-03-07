@@ -9,7 +9,7 @@
  * You must handle the operations + * and the parenthesis.
  * You don't have to handle whitespaces in the expression.
  * All the values in the expression will be between 0 and 9 included.
- * In case of unexpected symbol or inappropriate parenthesis, you will
+ * In case of unexpected symbol or inadepthropriate parenthesis, you will
  * print "Unexpected token '%c'
  * " and exit with the code 1 (if the
  * symbol is the end of input you will print: "Unexpected end of input
@@ -135,7 +135,7 @@ int eval_tree(node *tree)
     }
 }
 
-int get_prior( char c ) {
+int get_type( char c ) {
 	if ( c == '+' )
 		return ADD;
 	if ( c == '*' )
@@ -145,51 +145,47 @@ int get_prior( char c ) {
 	return ( -1 );
 }
 
+enum { PAR_PRIORITY = 10 };
+
+#define CALC_PRIORITY(type, depth) ( (type) + (depth * PAR_PRIORITY) )
+
 node *n(char **s) {
-
-	// The variables names in this function have to be improved.
-
-	enum { PAR_WEIGHT = 10 };
 
 	if ( !s || !*s )
 		return NULL;
 
-	struct s_min_prior {
-		int type; // Net weight of the element -> aka the node's type in the tree.
-		int value; // Composed weight (priority) of the element. It means: net weight + parenthesis depth * parenthesis weight.
-		char *ptr; // Pointer to the less prioritized element in the string.
-	} min_prior;
-	min_prior.value = INT_MAX;
+	struct expression_element {
+		int type;	// Element type (val, sum, multi). Also encodes the operator precedence (excluding parentheses).
+		int priority; // Effective precedence, derived from the type and the current parentheses depth.
+		char *ptr; // Pointer to the element in the original expression's string.
+	} curr, min_prior;
+	
+	min_prior.priority = INT_MAX;
 	min_prior.type = VAL;
 	min_prior.ptr = 0;
 	
 	node new;
 
-	int p = 0; // Current element's net weight
-	int pp = 0; // Parenthesis depth
+	int depth = 0; // Parenthesis depth
 
 	// Find the less prioritized node (including parenthesis)
 	for ( int i = 0; (*s)[i]; i++ ) {
 
 		if ( (*s)[i] == '(' ){
-			pp++;
+			depth++;
 			continue;
 		}
 		else if ( (*s)[i] == ')' ) {
-			pp--;
+			depth--;
 			continue;
 		}
 
-		// `p' contains the net weight of the curr element.
-		// `p' contains -1 in case of unexpected element.
-		p = get_prior((*s)[i]);
+		curr.type = get_type((*s)[i]);
+		curr.priority = CALC_PRIORITY(curr.type, depth);
+		curr.ptr = &(*s)[i];
 
-		// To obtain the real priority of the element simply sum the Net Weight with the Parenthesis Full Weight: `p' + `pp' * `PAR_WEIGHT'.
-		if ( p != -1 && (p + pp * PAR_WEIGHT) < min_prior.value ) {
-			min_prior.value = (p + pp * PAR_WEIGHT);
-			min_prior.type = p;
-			min_prior.ptr = (*s) + i;
-		}
+		if ( curr.type != -1 && curr.priority < min_prior.priority )
+			min_prior = curr;
 	}
 
 	new.type = min_prior.type;
