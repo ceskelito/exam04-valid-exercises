@@ -34,13 +34,13 @@ typedef struct node {
 //     free(n);
 // }
 //
-// void    unexpected(char c)
-// {
-//     if (c)
-//         printf("Unexpected token '%c'\n", c);
-//     else
-//         printf("Unexpected end of input\n");
-// }
+void    unexpected(char c)
+{
+    if (c)
+        printf("Unexpected token '%c'\n", c);
+    else
+        printf("Unexpected end of input\n");
+}
 //
 // int accept(char **s, char c)
 // {
@@ -173,29 +173,41 @@ int validate_input(char *s)
 			d++;
 		else if ( s[i] == ')' )
 			d--;
-		if ( d < 0 )
+		if ( d < 0 ) {
+			unexpected(s[i]);
 			return ERR;
+		}
+
 		if ( s[i] == '(' )
 		{
-			if ( !s[i+1] || !check_set(s[i+1], "()0123456789") )
+			if ( !s[i+1] || !check_set(s[i+1], "()0123456789") ) {
+				unexpected(s[i+1]);
 				return ERR;		
+			}
 		}
 		else if ( s[i] == ')' )
 		{
-			if ( s[i+1] && !check_set(s[i+1], ")*+") )
+			if ( s[i+1] && !check_set(s[i+1], ")*+") ) {
+				unexpected(s[i+1]);
 				return ERR;		
+			}
 		}
 		else if ( check_set(s[i], "+*"))
 		{
-			if ( !s[i+1] || !check_set(s[i+1], "(0123456789") )
+			if ( !s[i+1] || !check_set(s[i+1], "(0123456789") ) {
+				unexpected(s[i+1]);
 				return ERR;
+			}
 		}
 		else if ( isdigit(s[i]) )
 		{
-			if ( s[i+1] && !check_set(s[i+1], "*+)") )
+			if ( s[i+1] && !check_set(s[i+1], "*+)") ) {
+				unexpected(s[i+1]);
 				return ERR;
+			}
 		}
 		else {
+			unexpected(s[i]);
 			return ERR;
 		}
 	}
