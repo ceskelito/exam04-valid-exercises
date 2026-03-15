@@ -146,6 +146,10 @@ int validate_input(char *s)
 			return ERR;
 		}
 	}
+	if ( d != 0 ) {
+		unexpected('\0');
+		return ERR;
+	}
 	return NICE;
 }
 
