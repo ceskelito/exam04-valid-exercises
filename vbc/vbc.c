@@ -23,15 +23,26 @@ enum { PAR_WEIGHT = 10 };
 
 #define GET_PRIOR(weight, depth) ( weight + (depth * PAR_WEIGHT) )
 
+int get_type(char c)
+{	
+	if ( c == '+' )
+		return ADD;
+	else if ( c == '*' )
+		return MULTI;
+	else if ( isdigit(c) )
+		return VAL;
+	return -1;
+}
+
 int n(char *s) {
 
 	int	res;
 	struct s_elem {
-		int		val;
-		int		depth;
-		int		weight;
-		int		priority;
-		char	*ptr;
+		int		val;		// Value of the element. Only considered if the type is VAL.
+		int		depth;		// Paranthesis depth of the element.
+		int		weight;		// Element type (val, sum, multi). Also encodes the operator precedence (excluding parentheses).
+		int		priority;	// Effective precedence, derived from the type and the current parentheses depth.
+		char	*ptr;		// Pointer to the element in the original expression's string.
 	} curr, min_prior;
 
 	min_prior.priority = INT_MAX;
@@ -42,6 +53,7 @@ int n(char *s) {
 	curr.depth = 0;
 	curr.priority = 0;
 
+	// Find the less prioritized element (including parenthesis)
 	for ( int i = 0; s[i]; i++ )
 	{
 		if ( s[i] == '(' )
@@ -56,15 +68,9 @@ int n(char *s) {
 		}
 
 		curr.ptr = &s[i];
-		if ( s[i] == '+' )
-			curr.weight = ADD;
-		else if ( s[i] == '*' )
-			curr.weight = MULTI;
-		else if ( isdigit(s[i]) )
-		{
-			curr.weight = VAL;
+		curr.weight = get_type(s[i]);
+		if ( curr.weight == VAL )
 			curr.val = s[i] - '0';
-		}
 		curr.priority = GET_PRIOR(curr.weight, curr.depth);
 		if ( curr.priority < min_prior.priority )
 			min_prior = curr;
