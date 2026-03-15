@@ -2,16 +2,11 @@
 #include <malloc.h> // change this to <stdlib.h>
 #include <ctype.h>
 
-typedef struct node {
-    enum {
-        ADD,
-        MULTI,
-        VAL
-    }   type;
-    int val;
-    struct node *l;
-    struct node *r;
-}   node;
+enum {
+	ADD,
+	MULTI,
+	VAL
+};
 
 void    unexpected(char c)
 {
