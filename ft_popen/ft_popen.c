@@ -1,56 +1,57 @@
-#define _GNU_SOURCE             /* See feature_test_macros(7) */
-#include <fcntl.h>              /* Obtain O_* constant definitions */
+#include <unistd.h>
+#include <stdio.h>
+#include <sys/types.h>
 #include <unistd.h>
 #include <stddef.h>
 #include <stdlib.h>
 
+enum { ERR = -1 };
 
-// pipe, fork, dup2, execvp, close, exit
+int ft_popen(const char *file, char *const argv[], char type) {
 
+	enum { READ = 0, WRITE = 1 };
 
-/**
- *	The function must launch the executable file with the arguments argv (using execvp).
- *	If type is 'r' the function must return a file descriptor connected to the output of the command.
- *	If type is 'w' the function must return a file descriptor connected to the input of the command.
- *	In case of error or invalid parameter the function must return -1.
- */
+	int pipefd[2];
+	int cpid = 0;
 
-int	ft_popen(const char *file, char *const argv[], char type) {
+	int ret_pe = 0; // Pipe End to return
+	int child_pe = 0; // Pipe End to dup in the child
+	int todup_fd = 0; // STDx_FILENO to overwrite (with dup2) in the child
 
-	enum { ERR = -1 };
-	typedef enum { READ = 0, WRITE = 1} e_pipe_end;
-
-	int			pipefd[2] = {0, 0};
-	e_pipe_end	ret_pipe_end;
-	e_pipe_end	child_pipe_end;
-	int			child_fd;
-	pid_t		pid;
-
-	if ( type == 'r' ) {
-		ret_pipe_end = READ;
-		child_pipe_end = WRITE;
-		child_fd = STDOUT_FILENO;
-	}
-	else if ( type == 'w' ) {
-		ret_pipe_end = WRITE;
-		child_pipe_end = READ;
-		child_fd = STDIN_FILENO;
-	}
-	else
+	if (!file || !argv || (type != 'r' && type != 'w'))
 		return ERR;
 
 	if ( pipe(pipefd) == -1 )
 		return ERR;
 
-	pid = fork();
-	if ( pid == -1) {
+	// Set up the file descriptors.
+	if (type == 'r')
+	{
+		// Child will write in the pipe.
+		// Return the READ end of the pipe.
+		ret_pe = pipefd[READ];
+		child_pe = pipefd[WRITE];
+		todup_fd = STDOUT_FILENO;
+	}
+	else {
+		// Child will wait for an input from the pipe.
+		// Returns the WRITE pipe's end to the caller.
+		//
+		// The child will wait for the caller to write in the pipe.
+		ret_pe = pipefd[WRITE];
+		child_pe = pipefd[READ];
+		todup_fd = STDIN_FILENO;
+	}
+
+	cpid = fork();
+	if ( cpid == -1 )
+	{
 		close(pipefd[READ]);
 		close(pipefd[WRITE]);
 		return ERR;
 	}
-
-	if ( !pid ) { //child
-		int dup_exit = dup2(pipefd[child_pipe_end], child_fd);
+	else if ( cpid == 0 ) { //CHILD
+		int dup_exit = dup2(child_pe, todup_fd);
 		close(pipefd[READ]);
 		close(pipefd[WRITE]);
 		if ( dup_exit == -1 )
@@ -58,6 +59,29 @@ int	ft_popen(const char *file, char *const argv[], char type) {
 		execvp(file, argv);
 		exit(EXIT_FAILURE);
 	}
-	close(pipefd[child_pipe_end]);
-	return pipefd[ret_pipe_end];
+	// Only close the file descriptors which we'll not return
+	if ( type == 'r' )
+		close(pipefd[WRITE]);
+	else
+		close(pipefd[READ]);
+	return ret_pe;
 }
+
+// int main(void) {
+//     int fd;
+//
+//     // Writing example
+//     fd = ft_popen("cat", (char *const []){"cat", NULL}, 'w');
+//     write(fd, "Hello World!\n", 13);
+//     close(fd);
+//
+//     // Reading example
+//     fd = ft_popen("ls", (char *const []){"ls", "-l", NULL}, 'r');
+//     char buf[1024];
+//     ssize_t n;
+//     while ((n = read(fd, buf, sizeof(buf))) > 0)
+//         write(STDOUT_FILENO, buf, n);
+//     close(fd);
+//
+//     return 0;
+// }
